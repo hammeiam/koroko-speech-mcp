@@ -9,6 +9,7 @@ The server can be configured using the following environment variables:
 | Variable | Description | Default | Valid Range |
 |----------|-------------|---------|-------------|
 | `MCP_DEFAULT_SPEECH_SPEED` | Default speed multiplier for text-to-speech | 1.1 | 0.5 to 2.0 |
+| `MCP_DEFAULT_VOICE` | Default voice for text-to-speech | af_bella | Any valid voice ID |
 
 In Cursor:
 ```
@@ -21,7 +22,8 @@ In Cursor:
         "speech-mcp-server"
       ],
       "env": {
-        MCP_DEFAULT_SPEECH_SPEED: 1.3
+        "MCP_DEFAULT_SPEECH_SPEED": 1.3,
+        "MCP_DEFAULT_VOICE": "af_bella"
       }
     }
   }
@@ -58,8 +60,8 @@ Run the server:
 # Using default configuration
 npm start
 
-# With custom speech speed
-MCP_DEFAULT_SPEECH_SPEED=1.5 npm start
+# With custom configuration
+MCP_DEFAULT_SPEECH_SPEED=1.5 MCP_DEFAULT_VOICE=af_bella npm start
 ```
 
 The server provides the following MCP tools:

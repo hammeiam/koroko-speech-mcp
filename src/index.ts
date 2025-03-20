@@ -20,6 +20,8 @@ if (isNaN(DEFAULT_SPEECH_SPEED) || DEFAULT_SPEECH_SPEED < 0.5 || DEFAULT_SPEECH_
   throw new Error("MCP_DEFAULT_SPEECH_SPEED must be a number between 0.5 and 2.0");
 }
 
+const DEFAULT_VOICE = (process.env.MCP_DEFAULT_VOICE || "af_bella") as KokoroVoice;
+
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
@@ -232,7 +234,7 @@ class TTSClient {
     }
 
     const audio = await this.ttsInstance.generate(text, {
-      voice: voice || "af_bella",
+      voice: voice || DEFAULT_VOICE,
       // @ts-ignore-line
       speed: speed || DEFAULT_SPEECH_SPEED,
     });
