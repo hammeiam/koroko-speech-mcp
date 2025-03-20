@@ -213,4 +213,33 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT License - see the [LICENSE](LICENSE) file for details. 
+MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Troubleshooting
+
+### Model Initialization Issues
+
+The server automatically attempts to download and initialize the TTS model on startup. If you encounter initialization errors:
+
+1. The server will automatically retry up to 3 times with a cleanup between attempts
+2. Use the `get_model_status` tool to monitor initialization progress and any errors
+3. If initialization fails after all retries, try manually removing the model files:
+
+```bash
+# Remove model files (MacOS/Linux)
+rm -rf ~/.npm/_npx/**/node_modules/@huggingface/transformers/.cache/onnx-community/Kokoro-82M-v1.0-ONNX/onnx/model_quantized.onnx
+rm -rf ~/.cache/huggingface/transformers/onnx-community/Kokoro-82M-v1.0-ONNX/onnx/model_quantized.onnx
+
+# Then restart the server
+npm start
+```
+
+The `get_model_status` tool will now include retry information in its response:
+```json
+{
+  "content": [{
+    "type": "text",
+    "text": "Model status: initializing (5s elapsed, retry 1/3)"
+  }]
+}
+``` 

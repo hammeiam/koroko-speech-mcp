@@ -8,9 +8,10 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
+import { rm } from 'fs/promises';
 import { KokoroTTS, KokoroVoice } from "kokoro-js";
 import player from 'node-wav-player';
-import { tmpdir } from 'os';
+import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 
 // Configuration from environment variables
@@ -18,6 +19,9 @@ const DEFAULT_SPEECH_SPEED = parseFloat(process.env.MCP_DEFAULT_SPEECH_SPEED || 
 if (isNaN(DEFAULT_SPEECH_SPEED) || DEFAULT_SPEECH_SPEED < 0.5 || DEFAULT_SPEECH_SPEED > 2.0) {
   throw new Error("MCP_DEFAULT_SPEECH_SPEED must be a number between 0.5 and 2.0");
 }
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
 
 // Type definitions for tool arguments
 interface TextToSpeechArgs {
@@ -112,30 +116,79 @@ class TTSClient {
   private initializationPromise: Promise<void> | null = null;
   private initializationError: Error | null = null;
   private initializationStartTime: number | null = null;
+  private retryCount: number = 0;
 
   constructor() {
     // Start initialization immediately but don't block
     this.startInitialization();
   }
 
+  private async cleanupModelFiles(): Promise<void> {
+    const modelPaths = [
+      join(homedir(), '.npm', '_npx', '**', 'node_modules', '@huggingface', 'transformers', '.cache', 'onnx-community', 'Kokoro-82M-v1.0-ONNX', 'onnx', 'model_quantized.onnx'),
+      join(homedir(), '.cache', 'huggingface', 'transformers', 'onnx-community', 'Kokoro-82M-v1.0-ONNX', 'onnx', 'model_quantized.onnx')
+    ];
+
+    for (const path of modelPaths) {
+      try {
+        await rm(path, { force: true });
+        console.error(`Cleaned up model file at ${path}`);
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+    }
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   private async startInitialization(): Promise<void> {
     if (this.initializationPromise) return;
     
     this.initializationStartTime = Date.now();
-    this.initializationPromise = KokoroTTS.from_pretrained(this.modelId, {
-      dtype: "q8",
-    }).then(instance => {
-      this.ttsInstance = instance;
-    }).catch(error => {
-      this.initializationError = error;
-      throw error;
-    });
+    this.initializationPromise = this.initializeWithRetry();
+  }
+
+  private async initializeWithRetry(): Promise<void> {
+    while (this.retryCount < MAX_RETRIES) {
+      try {
+        if (this.retryCount > 0) {
+          console.error(`Retrying model initialization (attempt ${this.retryCount + 1}/${MAX_RETRIES})...`);
+          await this.cleanupModelFiles();
+          await this.delay(RETRY_DELAY_MS);
+        }
+
+        this.ttsInstance = await KokoroTTS.from_pretrained(this.modelId, {
+          dtype: "q8",
+        });
+        return;
+      } catch (error) {
+        this.retryCount++;
+        const isLastAttempt = this.retryCount >= MAX_RETRIES;
+        
+        if (error instanceof Error) {
+          const errorMessage = `Model initialization failed${isLastAttempt ? ' (final attempt)' : ''}: ${error.message}`;
+          console.error(errorMessage);
+          
+          if (isLastAttempt) {
+            this.initializationError = new Error(
+              `Failed to initialize model after ${MAX_RETRIES} attempts. ` +
+              `Last error: ${error.message}\n` +
+              `Try manually removing the model file and running again.`
+            );
+            throw this.initializationError;
+          }
+        }
+      }
+    }
   }
 
   async getStatus(): Promise<{
     status: 'uninitialized' | 'initializing' | 'ready' | 'error';
     elapsedMs?: number;
     error?: string;
+    retryCount?: number;
   }> {
     if (!this.initializationPromise) {
       return { status: 'uninitialized' };
@@ -143,16 +196,21 @@ class TTSClient {
     if (this.initializationError) {
       return { 
         status: 'error',
-        error: this.initializationError.message
+        error: this.initializationError.message,
+        retryCount: this.retryCount
       };
     }
     if (!this.ttsInstance) {
       return { 
         status: 'initializing',
-        elapsedMs: Date.now() - (this.initializationStartTime || 0)
+        elapsedMs: Date.now() - (this.initializationStartTime || 0),
+        retryCount: this.retryCount
       };
     }
-    return { status: 'ready' };
+    return { 
+      status: 'ready',
+      retryCount: this.retryCount
+    };
   }
 
   async waitForInit(): Promise<void> {
