@@ -1,13 +1,12 @@
 {
   "name": "speech-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for text-to-speech conversion using Kokoro TTS",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "mcp-server-speech": "dist/index.js"
+    "speech-mcp-server": "dist/index.js"
   },
-  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -25,7 +24,7 @@
     "tts",
     "text-to-speech"
   ],
-  "author": "David Hamme",
+  "author": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
     "kokoro-js": "^1.2.0",

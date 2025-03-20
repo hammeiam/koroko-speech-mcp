@@ -15,13 +15,13 @@ A Model Context Protocol (MCP) server for text-to-speech conversion using Kokoro
 
 ```bash
 # Using npm
-npm install @decodershq/speech-mcp-server
+npm install speech-mcp-server
 
 # Using pnpm (recommended)
-pnpm add @decodershq/speech-mcp-server
+pnpm add speech-mcp-server
 
 # Using yarn
-yarn add @decodershq/speech-mcp-server
+yarn add speech-mcp-server
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ yarn add @decodershq/speech-mcp-server
 
 ```bash
 # Using npx
-npx @decodershq/speech-mcp-server
+npx speech-mcp-server
 
 # Or if installed globally
 mcp-server-speech
