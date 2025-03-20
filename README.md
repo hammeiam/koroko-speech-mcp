@@ -26,90 +26,107 @@ yarn add @decodershq/speech-mcp-server
 
 ## Usage
 
-### Starting the Server
+### Running the Server
 
 ```bash
-# Using the CLI
+# Using npx
+npx @decodershq/speech-mcp-server
+
+# Or if installed globally
 mcp-server-speech
-
-# Using node directly
-node dist/index.js
-```
-
-### Available Tools
-
-The server provides the following tools:
-
-1. `text_to_speech`: Basic text-to-speech conversion
-   ```json
-   {
-     "type": "request",
-     "id": "1",
-     "method": "call_tool",
-     "params": {
-       "name": "text_to_speech",
-       "arguments": {
-         "text": "Hello world",
-         "voice": "af_bella"
-       }
-     }
-   }
-   ```
-
-2. `text_to_speech_with_options`: Advanced text-to-speech with customization
-   ```json
-   {
-     "type": "request",
-     "id": "2",
-     "method": "call_tool",
-     "params": {
-       "name": "text_to_speech_with_options",
-       "arguments": {
-         "text": "Hello world",
-         "voice": "af_bella",
-         "speed": 1.0,
-         "pitch": 0
-       }
-     }
-   }
-   ```
-
-3. `list_voices`: Get available voice options
-   ```json
-   {
-     "type": "request",
-     "id": "3",
-     "method": "list_voices",
-     "params": {}
-   }
-   ```
-
-### Testing with MCP Inspector
-
-The package includes a debug inspector for testing:
-
-```bash
-# Run the inspector in debug mode
-pnpm inspector
 ```
 
 ### Development
 
 ```bash
+# Clone the repository
+git clone <your-repo-url>
+cd speech-mcp-server
+
 # Install dependencies
 pnpm install
+
+# Start development server with auto-reload
+pnpm dev
 
 # Build the project
 pnpm build
 
-# Watch mode for development
-pnpm dev
-
-# Lint code
+# Run linting
 pnpm lint
 
 # Format code
 pnpm format
+
+# Test with MCP Inspector
+pnpm inspector
+```
+
+## Available Tools
+
+### 1. text_to_speech
+Converts text to speech using the default settings.
+
+```json
+{
+  "type": "request",
+  "id": "1",
+  "method": "call_tool",
+  "params": {
+    "name": "text_to_speech",
+    "arguments": {
+      "text": "Hello world",
+      "voice": "af_bella"  // optional
+    }
+  }
+}
+```
+
+### 2. text_to_speech_with_options
+Converts text to speech with customizable parameters.
+
+```json
+{
+  "type": "request",
+  "id": "1",
+  "method": "call_tool",
+  "params": {
+    "name": "text_to_speech_with_options",
+    "arguments": {
+      "text": "Hello world",
+      "voice": "af_bella",  // optional
+      "speed": 1.0,         // optional (0.5 to 2.0)
+      "pitch": 0            // optional (-20 to +20)
+    }
+  }
+}
+```
+
+### 3. list_voices
+Lists all available voices for text-to-speech.
+
+```json
+{
+  "type": "request",
+  "id": "1",
+  "method": "list_voices",
+  "params": {}
+}
+```
+
+## Testing
+
+You can test the server using the MCP Inspector or by sending raw JSON messages:
+
+```bash
+# List available tools
+echo '{"type":"request","id":"1","method":"list_tools","params":{}}' | node dist/index.js
+
+# List available voices
+echo '{"type":"request","id":"2","method":"list_voices","params":{}}' | node dist/index.js
+
+# Convert text to speech
+echo '{"type":"request","id":"3","method":"call_tool","params":{"name":"text_to_speech","arguments":{"text":"Hello world","voice":"af_bella"}}}' | node dist/index.js
 ```
 
 ## Integration with Claude Desktop
@@ -118,27 +135,19 @@ To use this server with Claude Desktop, add the following to your Claude Desktop
 
 ```json
 {
-  "tools": {
+  "servers": {
     "speech": {
-      "command": "node",
-      "args": ["/path/to/dist/index.js"]
+      "command": "npx",
+      "args": ["@decodershq/speech-mcp-server"]
     }
   }
 }
 ```
 
-## Technical Details
+## Contributing
 
-- Built with TypeScript and Node.js
-- Uses Kokoro TTS model for speech synthesis
-- Implements MCP Server SDK version 1.7.0
-- Supports WAV audio output
-- Cross-platform compatible
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. 
+MIT License - see the [LICENSE](LICENSE) file for details. 
