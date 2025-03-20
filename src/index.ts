@@ -8,8 +8,7 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { pipeline } from '@xenova/transformers';
-import { writeFile } from 'fs/promises';
+import { KokoroTTS, KokoroVoice } from "kokoro-js";
 import player from 'node-wav-player';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -17,11 +16,13 @@ import { join } from 'path';
 // Type definitions for tool arguments
 interface TextToSpeechArgs {
   text: string;
+  voice?: KokoroVoice;
 }
 
 interface TextToSpeechWithOptionsArgs extends TextToSpeechArgs {
   speed?: number;
   pitch?: number;
+  voice?: KokoroVoice;
 }
 
 // Tool definitions
@@ -36,6 +37,10 @@ const textToSpeechTool: Tool = {
         description: "The text to convert to speech",
         minLength: 1,
         maxLength: 1000,
+      },
+      voice: {
+        type: "string",
+        description: "The voice to use for speech synthesis (e.g. 'af_bella'). Use list_voices to see available options.",
       },
     },
     required: ["text"],
@@ -54,6 +59,10 @@ const textToSpeechWithOptionsTool: Tool = {
         minLength: 1,
         maxLength: 1000,
       },
+      voice: {
+        type: "string",
+        description: "The voice to use for speech synthesis (e.g. 'af_bella'). Use list_voices to see available options.",
+      },
       speed: {
         type: "number",
         description: "Speech rate multiplier (0.5 to 2.0)",
@@ -71,43 +80,51 @@ const textToSpeechWithOptionsTool: Tool = {
   },
 };
 
+const listVoicesTool: Tool = {
+  name: "list_voices",
+  description: "List all available voices for text-to-speech",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    required: [],
+  },
+};
+
 class TTSClient {
-  private ttsInstance: any = null;
-  private readonly token: string;
+  private ttsInstance: KokoroTTS | null = null;
+  private readonly modelId = "onnx-community/Kokoro-82M-ONNX";
 
-  constructor(token: string) {
-    this.token = token;
-
-    // Configure global fetch headers for Hugging Face
-    const originalFetch = global.fetch;
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (typeof input === 'string' && input.includes('huggingface.co')) {
-        return originalFetch(input, {
-          ...init,
-          headers: {
-            ...init?.headers,
-            Authorization: `Bearer ${this.token}`
-          }
-        });
-      }
-      return originalFetch(input, init);
-    };
+  constructor() {
+    // No token needed for Kokoro
   }
 
   async initTTS(): Promise<void> {
     if (!this.ttsInstance) {
-      this.ttsInstance = await pipeline('text-to-speech', 'canopylabs/orpheus-3b-0.1-ft');
+      this.ttsInstance = await KokoroTTS.from_pretrained(this.modelId, {
+        dtype: "q8", // Use quantized model for better performance
+      });
     }
   }
 
-  async generateAndPlayAudio(text: string, speed?: number, pitch?: number): Promise<void> {
+  async listVoices(): Promise<KokoroVoice[]> {
+    if (!this.ttsInstance) {
+      await this.initTTS();
+    }
+    return this.ttsInstance!.list_voices();
+  }
+
+  async generateAndPlayAudio(text: string, voice?: KokoroVoice, speed?: number, pitch?: number): Promise<void> {
     if (!this.ttsInstance) {
       await this.initTTS();
     }
 
-    const output = await this.ttsInstance(text);
+    const audio = await this.ttsInstance!.generate(text, {
+      voice: voice || "af_bella", // Default voice
+      // TODO: Implement speed and pitch when supported by kokoro-js
+    });
+
     const tempFile = join(tmpdir(), `${Date.now()}.wav`);
-    await writeFile(tempFile, Buffer.from(output.audio));
+    await audio.save(tempFile);
     
     await player.play({
       path: tempFile,
@@ -117,13 +134,6 @@ class TTSClient {
 }
 
 async function main() {
-  const hfToken = process.env.HF_TOKEN;
-
-  if (!hfToken) {
-    console.error("Please set HF_TOKEN environment variable");
-    process.exit(1);
-  }
-
   console.error("Starting Speech MCP Server...");
 
   const server = new Server(
@@ -138,7 +148,7 @@ async function main() {
     },
   );
 
-  const ttsClient = new TTSClient(hfToken);
+  const ttsClient = new TTSClient();
 
   // Pre-initialize TTS model
   await ttsClient.initTTS();
@@ -160,11 +170,11 @@ async function main() {
               throw new Error("Missing required argument: text");
             }
 
-            await ttsClient.generateAndPlayAudio(args.text);
+            await ttsClient.generateAndPlayAudio(args.text, args.voice);
             return {
               content: [{ 
                 type: "text", 
-                text: "Successfully generated and played audio" 
+                text: `Successfully generated and played audio${args.voice ? ` using voice: ${args.voice}` : ''}` 
               }],
             };
           }
@@ -175,11 +185,21 @@ async function main() {
               throw new Error("Missing required argument: text");
             }
 
-            await ttsClient.generateAndPlayAudio(args.text, args.speed, args.pitch);
+            await ttsClient.generateAndPlayAudio(args.text, args.voice, args.speed, args.pitch);
             return {
               content: [{ 
                 type: "text", 
-                text: `Successfully generated and played audio (speed: ${args.speed || 1.0}, pitch: ${args.pitch || 0})` 
+                text: `Successfully generated and played audio${args.voice ? ` using voice: ${args.voice}` : ''} (speed: ${args.speed || 1.0}, pitch: ${args.pitch || 0})` 
+              }],
+            };
+          }
+
+          case "list_voices": {
+            const voices = await ttsClient.listVoices();
+            return {
+              content: [{ 
+                type: "text", 
+                text: `Available voices:\n${voices.join('\n')}` 
               }],
             };
           }
@@ -209,6 +229,7 @@ async function main() {
       tools: [
         textToSpeechTool,
         textToSpeechWithOptionsTool,
+        listVoicesTool,
       ],
     };
   });
