@@ -92,7 +92,7 @@ const listVoicesTool: Tool = {
 
 class TTSClient {
   private ttsInstance: KokoroTTS | null = null;
-  private readonly modelId = "onnx-community/Kokoro-82M-ONNX";
+  private readonly modelId = "onnx-community/Kokoro-82M-v1.0-ONNX";
 
   constructor() {
     // No token needed for Kokoro
@@ -110,7 +110,11 @@ class TTSClient {
     if (!this.ttsInstance) {
       await this.initTTS();
     }
-    return this.ttsInstance!.list_voices();
+    // @ts-ignore-line
+    const allVoices = this.ttsInstance!.voices as unknown as {[voice: string]: {overallGrade: string; gender: string}};
+    const goodVoices = Object.keys(allVoices)
+      .filter((voiceName) => ['A+', 'A', 'A-', 'B+', 'B', 'B-'].includes(allVoices[voiceName].overallGrade))
+    return goodVoices as unknown as KokoroVoice[];
   }
 
   async generateAndPlayAudio(text: string, voice?: KokoroVoice, speed?: number, pitch?: number): Promise<void> {
@@ -120,6 +124,8 @@ class TTSClient {
 
     const audio = await this.ttsInstance!.generate(text, {
       voice: voice || "af_bella", // Default voice
+      // @ts-ignore-line
+      speed: speed || 1.1,
       // TODO: Implement speed and pitch when supported by kokoro-js
     });
 

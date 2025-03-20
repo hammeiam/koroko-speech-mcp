@@ -26,7 +26,7 @@
   "author": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
-    "kokoro-js": "^1.0.0",
+    "kokoro-js": "^1.2.0",
     "node-wav-player": "^0.2.0"
   },
   "devDependencies": {
