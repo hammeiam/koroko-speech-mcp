@@ -1,6 +1,32 @@
 # Speech MCP Server
 
-A Model Context Protocol (MCP) server for text-to-speech conversion using Kokoro TTS. This server provides high-quality speech synthesis capabilities through a standardized MCP interface.
+A Model Context Protocol server that provides text-to-speech capabilities using the Kokoro TTS model.
+
+## Configuration
+
+The server can be configured using the following environment variables:
+
+| Variable | Description | Default | Valid Range |
+|----------|-------------|---------|-------------|
+| `MCP_DEFAULT_SPEECH_SPEED` | Default speed multiplier for text-to-speech | 1.1 | 0.5 to 2.0 |
+
+In Cursor:
+```
+{
+  "mcpServers": {
+    "speech": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "speech-mcp-server"
+      ],
+      "env": {
+        MCP_DEFAULT_SPEECH_SPEED: 1.3
+      }
+    }
+  }
+}
+```
 
 ## Features
 
@@ -26,15 +52,21 @@ yarn add speech-mcp-server
 
 ## Usage
 
-### Running the Server
+Run the server:
 
 ```bash
-# Using npx
-npx speech-mcp-server
+# Using default configuration
+npm start
 
-# Or if installed globally
-mcp-server-speech
+# With custom speech speed
+MCP_DEFAULT_SPEECH_SPEED=1.5 npm start
 ```
+
+The server provides the following MCP tools:
+- `text_to_speech`: Basic text-to-speech conversion
+- `text_to_speech_with_options`: Text-to-speech with customizable speed and pitch
+- `list_voices`: List all available voices
+- `get_model_status`: Check the initialization status of the TTS model
 
 ### Development
 
@@ -113,6 +145,37 @@ Lists all available voices for text-to-speech.
   "params": {}
 }
 ```
+
+### 4. get_model_status
+Check the current status of the TTS model initialization. This is particularly useful when first starting the server, as the model needs to be downloaded and initialized.
+
+```json
+{
+  "type": "request",
+  "id": "1",
+  "method": "call_tool",
+  "params": {
+    "name": "get_model_status",
+    "arguments": {}
+  }
+}
+```
+
+Response example:
+```json
+{
+  "content": [{
+    "type": "text",
+    "text": "Model status: initializing (5s elapsed)"
+  }]
+}
+```
+
+Possible status values:
+- `uninitialized`: Model initialization hasn't started
+- `initializing`: Model is being downloaded and initialized
+- `ready`: Model is ready to use
+- `error`: An error occurred during initialization
 
 ## Testing
 

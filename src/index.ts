@@ -13,6 +13,12 @@ import player from 'node-wav-player';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
+// Configuration from environment variables
+const DEFAULT_SPEECH_SPEED = parseFloat(process.env.MCP_DEFAULT_SPEECH_SPEED || "1.1");
+if (isNaN(DEFAULT_SPEECH_SPEED) || DEFAULT_SPEECH_SPEED < 0.5 || DEFAULT_SPEECH_SPEED > 2.0) {
+  throw new Error("MCP_DEFAULT_SPEECH_SPEED must be a number between 0.5 and 2.0");
+}
+
 // Type definitions for tool arguments
 interface TextToSpeechArgs {
   text: string;
@@ -90,42 +96,94 @@ const listVoicesTool: Tool = {
   },
 };
 
+const getModelStatusTool: Tool = {
+  name: "get_model_status",
+  description: "Get the current status of the TTS model initialization",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    required: [],
+  },
+};
+
 class TTSClient {
   private ttsInstance: KokoroTTS | null = null;
   private readonly modelId = "onnx-community/Kokoro-82M-v1.0-ONNX";
+  private initializationPromise: Promise<void> | null = null;
+  private initializationError: Error | null = null;
+  private initializationStartTime: number | null = null;
 
   constructor() {
-    // No token needed for Kokoro
+    // Start initialization immediately but don't block
+    this.startInitialization();
   }
 
-  async initTTS(): Promise<void> {
-    if (!this.ttsInstance) {
-      this.ttsInstance = await KokoroTTS.from_pretrained(this.modelId, {
-        dtype: "q8", // Use quantized model for better performance
-      });
+  private async startInitialization(): Promise<void> {
+    if (this.initializationPromise) return;
+    
+    this.initializationStartTime = Date.now();
+    this.initializationPromise = KokoroTTS.from_pretrained(this.modelId, {
+      dtype: "q8",
+    }).then(instance => {
+      this.ttsInstance = instance;
+    }).catch(error => {
+      this.initializationError = error;
+      throw error;
+    });
+  }
+
+  async getStatus(): Promise<{
+    status: 'uninitialized' | 'initializing' | 'ready' | 'error';
+    elapsedMs?: number;
+    error?: string;
+  }> {
+    if (!this.initializationPromise) {
+      return { status: 'uninitialized' };
     }
+    if (this.initializationError) {
+      return { 
+        status: 'error',
+        error: this.initializationError.message
+      };
+    }
+    if (!this.ttsInstance) {
+      return { 
+        status: 'initializing',
+        elapsedMs: Date.now() - (this.initializationStartTime || 0)
+      };
+    }
+    return { status: 'ready' };
+  }
+
+  async waitForInit(): Promise<void> {
+    if (!this.initializationPromise) {
+      this.startInitialization();
+    }
+    await this.initializationPromise;
   }
 
   async listVoices(): Promise<KokoroVoice[]> {
+    await this.waitForInit();
     if (!this.ttsInstance) {
-      await this.initTTS();
+      throw new Error("TTS model not initialized");
     }
     // @ts-ignore-line
-    const allVoices = this.ttsInstance!.voices as unknown as {[voice: string]: {overallGrade: string; gender: string}};
+    const allVoices = this.ttsInstance.voices as unknown as {[voice: string]: {overallGrade: string; gender: string}};
     const goodVoices = Object.keys(allVoices)
-      .filter((voiceName) => ['A+', 'A', 'A-', 'B+', 'B', 'B-'].includes(allVoices[voiceName].overallGrade))
+      .filter((voiceName) => ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+'].includes(allVoices[voiceName].overallGrade))
     return goodVoices as unknown as KokoroVoice[];
   }
 
   async generateAndPlayAudio(text: string, voice?: KokoroVoice, speed?: number, pitch?: number): Promise<void> {
+    await this.waitForInit();
     if (!this.ttsInstance) {
-      await this.initTTS();
+      throw new Error("TTS model not initialized");
     }
 
-    const audio = await this.ttsInstance!.generate(text, {
-      voice: voice || "af_bella", // Default voice
+    const audio = await this.ttsInstance.generate(text, {
+      voice: voice || "af_bella",
       // @ts-ignore-line
-      speed: speed || 1.1,
+      speed: speed || DEFAULT_SPEECH_SPEED,
       // TODO: Implement speed and pitch when supported by kokoro-js
     });
 
@@ -155,10 +213,6 @@ async function main() {
   );
 
   const ttsClient = new TTSClient();
-
-  // Pre-initialize TTS model
-  await ttsClient.initTTS();
-  console.error("TTS model initialized successfully");
 
   server.setRequestHandler(
     CallToolRequestSchema,
@@ -210,6 +264,20 @@ async function main() {
             };
           }
 
+          case "get_model_status": {
+            const status = await ttsClient.getStatus();
+            let message = `Model status: ${status.status}`;
+            if (status.elapsedMs) {
+              message += ` (${Math.round(status.elapsedMs / 1000)}s elapsed)`;
+            }
+            if (status.error) {
+              message += `\nError: ${status.error}`;
+            }
+            return {
+              content: [{ type: "text", text: message }],
+            };
+          }
+
           default:
             throw new Error(`Unknown tool: ${request.params.name}`);
         }
@@ -236,6 +304,7 @@ async function main() {
         textToSpeechTool,
         textToSpeechWithOptionsTool,
         listVoicesTool,
+        getModelStatusTool,
       ],
     };
   });
