@@ -1,134 +1,144 @@
 # Speech MCP Server
 
-A simple MCP (Media Control Protocol) server that converts text to speech using the Orpheus TTS model and plays the generated audio.
+A Model Context Protocol (MCP) server for text-to-speech conversion using Kokoro TTS. This server provides high-quality speech synthesis capabilities through a standardized MCP interface.
 
 ## Features
 
-- Text-to-speech conversion using the Orpheus model
-- RESTful API endpoint for TTS requests
-- Local audio playback
-- Input validation
-- Health check endpoint
-
-## Prerequisites
-
-- Node.js 18+
-- pnpm
-- A Hugging Face API token (get one at https://huggingface.co/settings/tokens)
+- 🎯 High-quality text-to-speech using Kokoro TTS model
+- 🗣️ Multiple voice options available
+- 🎛️ Customizable speech parameters (speed, pitch)
+- 🔌 MCP-compliant interface
+- 📦 Easy installation and setup
+- 🚀 No API key required
 
 ## Installation
 
 ```bash
-pnpm install
+# Using npm
+npm install @decodershq/speech-mcp-server
+
+# Using pnpm (recommended)
+pnpm add @decodershq/speech-mcp-server
+
+# Using yarn
+yarn add @decodershq/speech-mcp-server
 ```
 
 ## Usage
 
-Add the speech-mcp server to your Claude Desktop configuration:
+### Starting the Server
+
+```bash
+# Using the CLI
+mcp-server-speech
+
+# Using node directly
+node dist/index.js
+```
+
+### Available Tools
+
+The server provides the following tools:
+
+1. `text_to_speech`: Basic text-to-speech conversion
+   ```json
+   {
+     "type": "request",
+     "id": "1",
+     "method": "call_tool",
+     "params": {
+       "name": "text_to_speech",
+       "arguments": {
+         "text": "Hello world",
+         "voice": "af_bella"
+       }
+     }
+   }
+   ```
+
+2. `text_to_speech_with_options`: Advanced text-to-speech with customization
+   ```json
+   {
+     "type": "request",
+     "id": "2",
+     "method": "call_tool",
+     "params": {
+       "name": "text_to_speech_with_options",
+       "arguments": {
+         "text": "Hello world",
+         "voice": "af_bella",
+         "speed": 1.0,
+         "pitch": 0
+       }
+     }
+   }
+   ```
+
+3. `list_voices`: Get available voice options
+   ```json
+   {
+     "type": "request",
+     "id": "3",
+     "method": "list_voices",
+     "params": {}
+   }
+   ```
+
+### Testing with MCP Inspector
+
+The package includes a debug inspector for testing:
+
+```bash
+# Run the inspector in debug mode
+pnpm inspector
+```
+
+### Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build the project
+pnpm build
+
+# Watch mode for development
+pnpm dev
+
+# Lint code
+pnpm lint
+
+# Format code
+pnpm format
+```
+
+## Integration with Claude Desktop
+
+To use this server with Claude Desktop, add the following to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
-  "mcpServers": {
+  "tools": {
     "speech": {
-      "command": "npx",
-      "args": ["-y", "speech-mcp"],
-      "env": {
-        "HF_TOKEN": "your_huggingface_token_here"
-      }
+      "command": "node",
+      "args": ["/path/to/dist/index.js"]
     }
   }
 }
 ```
 
-### Configuration
+## Technical Details
 
-The server requires the following environment variables:
-
-- `HF_TOKEN`: Your Hugging Face API token for accessing the Orpheus model
-
-### Available Tools
-
-#### text_to_speech
-
-Converts text to speech and plays it through the system's audio output.
-
-Parameters:
-```json
-{
-  "text": "Text to convert to speech (max 1000 characters)"
-}
-```
-
-Response:
-```json
-{
-  "content": [{
-    "type": "text",
-    "text": "Audio played successfully"
-  }]
-}
-```
-
-## Development
-
-Start the development server with hot reload:
-
-```bash
-pnpm dev
-```
-
-## Build
-
-Compile TypeScript to JavaScript:
-
-```bash
-pnpm build
-```
-
-## Production
-
-Run the compiled code:
-
-```bash
-pnpm start
-```
-
-## API Endpoints
-
-### POST /api/tts
-
-Converts text to speech and plays it.
-
-Request body:
-```json
-{
-  "text": "Text to convert to speech"
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "message": "Audio played successfully"
-}
-```
-
-### GET /health
-
-Health check endpoint.
-
-Response:
-```json
-{
-  "status": "ok"
-}
-```
-
-## Environment Variables
-
-- `PORT`: Server port (default: 3000)
+- Built with TypeScript and Node.js
+- Uses Kokoro TTS model for speech synthesis
+- Implements MCP Server SDK version 1.7.0
+- Supports WAV audio output
+- Cross-platform compatible
 
 ## License
 
-ISC 
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. 

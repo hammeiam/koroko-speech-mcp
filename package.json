@@ -1,12 +1,13 @@
 {
-  "name": "@modelcontextprotocol/server-speech",
+  "name": "speech-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for text-to-speech conversion using Orpheus model",
+  "description": "MCP server for text-to-speech conversion using Kokoro TTS",
   "license": "MIT",
   "type": "module",
   "bin": {
     "mcp-server-speech": "dist/index.js"
   },
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -16,14 +17,15 @@
     "watch": "tsc --watch",
     "dev": "tsx watch src/index.ts",
     "lint": "eslint src --ext .ts",
-    "format": "prettier --write src/**/*.ts"
+    "format": "prettier --write src/**/*.ts",
+    "inspector": "npx @modelcontextprotocol/inspector build/index.js --debug"
   },
   "keywords": [
     "mcp",
     "tts",
     "text-to-speech"
   ],
-  "author": "",
+  "author": "David Hamme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
     "kokoro-js": "^1.2.0",
