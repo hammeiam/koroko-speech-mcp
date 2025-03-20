@@ -32,7 +32,7 @@ In Cursor:
 
 - 🎯 High-quality text-to-speech using Kokoro TTS model
 - 🗣️ Multiple voice options available
-- 🎛️ Customizable speech parameters (speed, pitch)
+- 🎛️ Customizable speech parameters (voice, speed)
 - 🔌 MCP-compliant interface
 - 📦 Easy installation and setup
 - 🚀 No API key required
@@ -64,7 +64,7 @@ MCP_DEFAULT_SPEECH_SPEED=1.5 npm start
 
 The server provides the following MCP tools:
 - `text_to_speech`: Basic text-to-speech conversion
-- `text_to_speech_with_options`: Text-to-speech with customizable speed and pitch
+- `text_to_speech_with_options`: Text-to-speech with customizable speed
 - `list_voices`: List all available voices
 - `get_model_status`: Check the initialization status of the TTS model
 
@@ -128,7 +128,6 @@ Converts text to speech with customizable parameters.
       "text": "Hello world",
       "voice": "af_bella",  // optional
       "speed": 1.0,         // optional (0.5 to 2.0)
-      "pitch": 0            // optional (-20 to +20)
     }
   }
 }

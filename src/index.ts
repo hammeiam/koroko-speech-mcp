@@ -31,7 +31,6 @@ interface TextToSpeechArgs {
 
 interface TextToSpeechWithOptionsArgs extends TextToSpeechArgs {
   speed?: number;
-  pitch?: number;
   voice?: KokoroVoice;
 }
 
@@ -59,7 +58,7 @@ const textToSpeechTool: Tool = {
 
 const textToSpeechWithOptionsTool: Tool = {
   name: "text_to_speech_with_options",
-  description: "Convert text to speech with customizable speed and pitch",
+  description: "Convert text to speech with customizable speed",
   inputSchema: {
     type: "object",
     properties: {
@@ -78,12 +77,6 @@ const textToSpeechWithOptionsTool: Tool = {
         description: "Speech rate multiplier (0.5 to 2.0)",
         minimum: 0.5,
         maximum: 2.0,
-      },
-      pitch: {
-        type: "number",
-        description: "Voice pitch adjustment (-20 to +20)",
-        minimum: -20,
-        maximum: 20,
       },
     },
     required: ["text"],
@@ -232,7 +225,7 @@ class TTSClient {
     return goodVoices as unknown as KokoroVoice[];
   }
 
-  async generateAndPlayAudio(text: string, voice?: KokoroVoice, speed?: number, pitch?: number): Promise<void> {
+  async generateAndPlayAudio(text: string, voice?: KokoroVoice, speed?: number): Promise<void> {
     await this.waitForInit();
     if (!this.ttsInstance) {
       throw new Error("TTS model not initialized");
@@ -242,7 +235,6 @@ class TTSClient {
       voice: voice || "af_bella",
       // @ts-ignore-line
       speed: speed || DEFAULT_SPEECH_SPEED,
-      // TODO: Implement speed and pitch when supported by kokoro-js
     });
 
     const tempFile = join(tmpdir(), `${Date.now()}.wav`);
@@ -303,11 +295,11 @@ async function main() {
               throw new Error("Missing required argument: text");
             }
 
-            await ttsClient.generateAndPlayAudio(args.text, args.voice, args.speed, args.pitch);
+            await ttsClient.generateAndPlayAudio(args.text, args.voice, args.speed);
             return {
               content: [{ 
                 type: "text", 
-                text: `Successfully generated and played audio${args.voice ? ` using voice: ${args.voice}` : ''} (speed: ${args.speed || 1.0}, pitch: ${args.pitch || 0})` 
+                text: `Successfully generated and played audio${args.voice ? ` using voice: ${args.voice}` : ''} (speed: ${args.speed || 1.0})` 
               }],
             };
           }
